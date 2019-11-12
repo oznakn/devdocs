@@ -1,26 +1,19 @@
-language: ruby
+dist: bionic
+language: bash
 
-addons:
-  apt:
-    packages:
-      - libcurl4-openssl-dev
+services:
+  - docker
 
-cache: bundler
-
-before_install:
-  - "echo 'gem: --no-document' > ~/.gemrc"
-  - gem update --system
-  - gem install bundler
+before_script:
+  - docker login -u "$REGISTRY_USER" -p "$REGISTRY_PASS"
 
 script:
-  - if [ "$TRAVIS_EVENT_TYPE" != "cron" ]; then bundle exec rake; fi
-  - if [ "$TRAVIS_EVENT_TYPE" = "cron" ]; then bundle exec thor updates:check --github-token $GH_TOKEN --upload; fi
+  - docker pull "${IMAGE_NAME}"
+  - docker build --cache-from "${IMAGE_NAME}:latest" -t "${IMAGE_NAME}" .
 
-deploy:
-  provider: heroku
-  app: devdocs
-  on:
-    branch: master
-    condition: $TRAVIS_EVENT_TYPE != cron
-  api_key:
-    secure: "4p1klvWJZSOImzFcKOduILjP93hlOlAhceWlYMKS4tU+TCFE8qTBzdKdFPSCsCgjB+YR9pBss+L0lJpVVMjSwFHXqpKe6EeUSltO2k7DFHfW7kXLUM/L0AfqXz+YXk76XUyZMhvOEbldPfaMaj10e8vgDOQCSHABDyK/4CU+hnI="
+after_success:
+  - docker push "${IMAGE_NAME}"
+
+branches:
+  only:
+    - master
